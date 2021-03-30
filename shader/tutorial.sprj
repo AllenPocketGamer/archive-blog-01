@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<project version="2">
+	<pipeline>
+		<pass name="Main" type="shader" active="true" patchverts="1">
+			<shader type="vs" path="shaders\main.vert" entry="main" />
+			<shader type="ps" path="shaders\main.frag" entry="main" />
+			<inputlayout>
+				<item value="Position" semantic="POSITION" />
+				<item value="Normal" semantic="NORMAL" />
+				<item value="Texcoord" semantic="TEXCOORD0" />
+			</inputlayout>
+			<rendertexture />
+			<items>
+				<item name="Sq" type="geometry">
+					<type>ScreenQuad</type>
+					<width>1</width>
+					<height>1</height>
+					<depth>1</depth>
+					<topology>TriangleList</topology>
+				</item>
+			</items>
+			<itemvalues />
+			<variables>
+				<variable type="float4x4" name="mx_w2c" system="Orthographic" />
+				<variable type="float4x4" name="mx_l2w" system="GeometryTransform" />
+				<variable type="float2" name="vp_size" system="ViewportSize" />
+				<variable type="float" name="time" system="Time" />
+				<variable type="float2" name="m_pos" system="MousePosition" />
+			</variables>
+			<macros />
+		</pass>
+	</pipeline>
+	<objects />
+	<cameras />
+	<settings>
+		<entry type="camera" fp="false">
+			<distance>33</distance>
+			<pitch>-38</pitch>
+			<yaw>217</yaw>
+			<roll>360</roll>
+		</entry>
+		<entry type="clearcolor" r="0" g="0" b="0" a="0" />
+		<entry type="usealpha" val="false" />
+	</settings>
+	<plugindata />
+</project>

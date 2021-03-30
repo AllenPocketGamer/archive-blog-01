@@ -95,11 +95,10 @@
 	<objects />
 	<cameras />
 	<settings>
-		<entry type="property" name="circle" item="pipe" />
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="pinned" name="pthickness" owner="geometry" />
 		<entry type="camera" fp="false">
-			<distance>46</distance>
+			<distance>44</distance>
 			<pitch>70</pitch>
 			<yaw>192</yaw>
 			<roll>360</roll>
