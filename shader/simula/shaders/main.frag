@@ -2,8 +2,15 @@
 
 const float PI = 3.1415926;
 
+const vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 CYAN = vec4(0.0, 1.0, 1.0, 1.0);
 const vec4 ROSE = vec4(1.0, 0.0, 0.5, 1.0);
-const vec4 LORANGE = vec4(1.0, 0.5, 0.2, 1.0);
+
+const vec4 LRED = vec4(253, 81, 69, 255) / 255.0;
+const vec4 LORANGE = vec4(255, 113, 101, 255) / 255.0;
+const vec4 LBEIGE = vec4(254, 186, 163, 255) / 255.0;
+const vec4 LBLUE = vec4(21, 125, 136, 255) / 255.0;
+const vec4 LCYAN = vec4(135, 208, 191, 255) / 255.0;
 
 uniform mat4 mx_proj;
 uniform mat4 mx_view;
@@ -11,7 +18,7 @@ uniform mat4 mx_model;
 uniform vec2 vp_size;
 uniform float time;
 
-uniform float pthickness;
+uniform float thickness;
 
 out vec4 outColor;
 
@@ -41,15 +48,19 @@ void main() {
 
    vec4 pp = gl_FragCoord;
    vec4 pl = mx_p2l * pp;
+
+   // 负值表示在局部空间, 正值表示在屏幕空间.
    // half thickness
-   float ht = 0.5 * length(mx_p2l * vec4(pthickness, 0.0, 0.0, 0.0));
+   float ht = thickness > 0 ? 0.5 * length(mx_p2l * vec4(thickness, 0.0, 0.0, 0.0)) : -0.5 * thickness;
+   // pixel thickness
+   float pt = thickness > 0 ? thickness : length(mx_l2p * vec4(2.0 * ht, 0.0, 0.0, 0.0));
 
    float f = sdf_circle(pl.xy, 1.0);
    float in_circle = smoothstep(-BLUR, BLUR, f - ht);
    float in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
-   // 弧长恒为厚度的PI倍.
-   float ARC = pthickness * PI;
+   // 弧长恒为像素厚度的PI倍.
+   float ARC = pt * PI;
    // radius in screen space.
    float rad = atan(pl.y, pl.x);
    float rp = length(mx_l2p * vec4(0.5, 0.0, 0.0, 0.0));
@@ -60,5 +71,5 @@ void main() {
    float in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
       abs(fract((range - 0.5) * count / 4.0 + time) - 0.5) * 2.0);
 
-   outColor = mix(in_circle * LORANGE, in_dash * ROSE, in_border);
+   outColor = mix(in_circle * LCYAN, in_dash * LBEIGE, in_border);
 }
