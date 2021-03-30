@@ -3,6 +3,7 @@
 const float PI = 3.1415926;
 
 const vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
 const vec4 CYAN = vec4(0.0, 1.0, 1.0, 1.0);
 const vec4 ROSE = vec4(1.0, 0.0, 0.5, 1.0);
 
@@ -71,5 +72,5 @@ void main() {
    float in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
       abs(fract((range - 0.5) * count / 4.0 + time) - 0.5) * 2.0);
 
-   outColor = mix(in_circle * LCYAN, in_dash * LBEIGE, in_border);
+   outColor = mix(in_circle * LRED, in_dash * vec4(0.1, 0.1, 0.1, 1.0), in_border);
 }
