@@ -98,9 +98,9 @@
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="pinned" name="pthickness" owner="geometry" />
 		<entry type="camera" fp="false">
-			<distance>44</distance>
-			<pitch>70</pitch>
-			<yaw>192</yaw>
+			<distance>41</distance>
+			<pitch>18</pitch>
+			<yaw>233</yaw>
 			<roll>360</roll>
 		</entry>
 		<entry type="clearcolor" r="0.706563711" g="0.540152967" b="0.540152967" a="0" />

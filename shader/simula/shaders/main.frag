@@ -22,7 +22,7 @@ float sdf_circle(vec2 pos, float sl) {
 }
 
 void main() {
-	float da = gl_FragCoord.z;
+   const float BLUR = 0.00318;
 
    // correct mx_proj
    mat4 mx_proj_crt = mx_proj;
@@ -41,20 +41,22 @@ void main() {
 
    vec4 pp = gl_FragCoord;
    vec4 pl = mx_p2l * pp;
+   // half thickness
+   float ht = 0.5 * length(mx_p2l * vec4(pthickness, 0.0, 0.0, 0.0));
 
-   float thickness = length(mx_p2l * vec4(pthickness, 0.0, 0.0, 0.0));
+   float f = sdf_circle(pl.xy, 1.0);
+   float in_circle = smoothstep(-BLUR, BLUR, f - ht);
+   float in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
-   float d = sdf_circle(pl.xy, 1.0);
-   float in_circle = step(0, d - 0.5 * thickness);
-   float in_border = step(abs(d - 0.5 * thickness), 0.5 * thickness);
-
-   const float ARC = 4.0 * PI;
-
-   float rp = length(mx_l2p * vec4(0.5, 0.0, 0.0, 0.0));
-   float count = 2.0 * PI * rp / ARC;
-
+   float ARC = pthickness * PI;
+   // radius in screen space.
    float rad = atan(pl.y, pl.x);
-   float in_dash = step(0.25, fract(rad / PI * count / 4.0 + time));
+   float rp = length(mx_l2p * vec4(0.5, 0.0, 0.0, 0.0));
+   // 1. (rad / PI):          [-PI, PI]映射到[-1, 1] 
+   // 2. (2 * PI * rp / ARC): 周长/弧长 = 弧个数
+   // 3. (1 / 4):             固定系数
+   float in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
+      abs(fract((2.0 * rad - PI) * rp / (4.0 * ARC) + time) - 0.5) * 2.0);
 
-   outColor = mix(in_circle * LORANGE, ROSE, in_border * in_dash);
+   outColor = mix(in_circle * LORANGE, in_dash * ROSE, in_border);
 }
