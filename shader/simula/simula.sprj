@@ -84,7 +84,7 @@
 				<variable type="float2" name="vp_size" system="ViewportSize" />
 				<variable type="float" name="pthickness">
 					<row>
-						<value>4</value>
+						<value>64</value>
 					</row>
 				</variable>
 				<variable type="float" name="time" system="Time" />
@@ -111,6 +111,7 @@
 		<entry type="watch_expr" expr="tpn" />
 		<entry type="vecwatch_expr" expr="inverse(mx_proj_crt)" color_r="0.835294127" color_g="0.0117647061" color_b="0.0980392173" />
 		<entry type="bkpt" file="C:/Users/Allen/Desktop/blog/shader/simula/shaders/main.frag" line="19" use_cond="false" cond="" enabled="true" />
+		<entry type="bkpt" file="C:/Users/Allen/Desktop/blog/shader/simula/shaders/main.frag" line="55" use_cond="false" cond="" enabled="true" />
 	</settings>
 	<plugindata />
 </project>

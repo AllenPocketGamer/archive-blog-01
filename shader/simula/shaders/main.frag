@@ -48,15 +48,17 @@ void main() {
    float in_circle = smoothstep(-BLUR, BLUR, f - ht);
    float in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
+   // 弧长恒为厚度的PI倍.
    float ARC = pthickness * PI;
    // radius in screen space.
    float rad = atan(pl.y, pl.x);
    float rp = length(mx_l2p * vec4(0.5, 0.0, 0.0, 0.0));
-   // 1. (rad / PI):          [-PI, PI]映射到[-1, 1] 
-   // 2. (2 * PI * rp / ARC): 周长/弧长 = 弧个数
-   // 3. (1 / 4):             固定系数
+   // [-PI, PI] map to [-1, 1]. 
+   float range = rad / PI;
+   // dash的份数, 恒为偶数.
+   float count = 2.0 * ceil(0.5 * PI * rp / ARC);
    float in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
-      abs(fract((2.0 * rad - PI) * rp / (4.0 * ARC) + time) - 0.5) * 2.0);
+      abs(fract((range - 0.5) * count / 4.0 + time) - 0.5) * 2.0);
 
    outColor = mix(in_circle * LORANGE, in_dash * ROSE, in_border);
 }
