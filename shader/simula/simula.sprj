@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <project version="2">
 	<pipeline>
-		<pass name="background" type="shader" active="true" patchverts="1">
+		<pass name="background" type="shader" active="true" patchverts="1" collapsed="true">
 			<shader type="vs" path="shaders\bg.vert" entry="main" />
 			<shader type="ps" path="shaders\bg.frag" entry="main" />
 			<inputlayout>
@@ -32,8 +32,6 @@
 			<shader type="ps" path="shaders\main.frag" entry="main" />
 			<inputlayout>
 				<item value="Position" semantic="POSITION" />
-				<item value="Normal" semantic="NORMAL" />
-				<item value="Texcoord" semantic="TEXCOORD0" />
 			</inputlayout>
 			<rendertexture />
 			<items>
@@ -75,7 +73,9 @@
 					<depth>1</depth>
 					<scaleX>256</scaleX>
 					<scaleY>256</scaleY>
-					<x>-512</x>
+					<instanced>true</instanced>
+					<instancecount>3</instancecount>
+					<instancebuffer>geometries</instancebuffer>
 					<topology>TriangleList</topology>
 				</item>
 			</items>
@@ -108,27 +108,24 @@
 						<value>1</value>
 					</row>
 				</variable>
-				<variable type="float4x4" name="mx_model" system="GeometryTransform" />
 				<variable type="float2" name="vp_size" system="ViewportSize" />
-				<variable type="float" name="thickness">
-					<row>
-						<value>4</value>
-					</row>
-				</variable>
 				<variable type="float" name="time" system="Time" />
 			</variables>
 			<macros />
 		</pass>
 	</pipeline>
-	<objects />
+	<objects>
+		<object type="buffer" name="geometries" size="72" format="vec4;float;float" pausedpreview="false">
+			<bind slot="0" name="geometry" />
+		</object>
+	</objects>
 	<cameras />
 	<settings>
 		<entry type="pinned" name="mx_view" owner="geometry" />
-		<entry type="pinned" name="thickness" owner="geometry" />
 		<entry type="camera" fp="false">
 			<distance>50</distance>
-			<pitch>18</pitch>
-			<yaw>233</yaw>
+			<pitch>-61</pitch>
+			<yaw>313</yaw>
 			<roll>360</roll>
 		</entry>
 		<entry type="clearcolor" r="0.706563711" g="0.540152967" b="0.540152967" a="0" />
@@ -138,8 +135,6 @@
 		<entry type="watch_expr" expr="tpv" />
 		<entry type="watch_expr" expr="tpn" />
 		<entry type="vecwatch_expr" expr="inverse(mx_proj_crt)" color_r="0.835294127" color_g="0.0117647061" color_b="0.0980392173" />
-		<entry type="bkpt" file="C:/Users/Allen/Desktop/blog/shader/simula/shaders/main.frag" line="19" use_cond="false" cond="" enabled="true" />
-		<entry type="bkpt" file="C:/Users/Allen/Desktop/blog/shader/simula/shaders/main.frag" line="55" use_cond="false" cond="" enabled="true" />
 	</settings>
 	<plugindata />
 </project>
