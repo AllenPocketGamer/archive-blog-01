@@ -126,7 +126,7 @@
 	<settings>
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="camera" fp="false">
-			<distance>43</distance>
+			<distance>45</distance>
 			<pitch>-49</pitch>
 			<yaw>159</yaw>
 			<roll>360</roll>

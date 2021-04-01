@@ -6,9 +6,9 @@ const vec4 ROYAL_BLUE       = vec4(48, 87, 225, 255) / 255.0;
 const vec4 LAVENDER_BLUE    = vec4(206, 216, 247, 255) / 255.0;
 const vec4 RESOLUTION_BLUE  = vec4(0, 32, 130, 255) / 255.0;
 
-const float GRID_SIZE = 200.0;
+const float GRID_SIZE = 100.0;
 const float GRID_SUB_COUNT = 5.0;
-const float GRID_THICKNESS = 4.0;
+const float GRID_THICKNESS = 2.0;
 
 uniform vec2 vp_size;
 uniform vec2 mouse;
@@ -54,7 +54,6 @@ void main() {
     vec2 c = vp_size / 2.0;
 
     float n = noise(p, 1000);
-
     // create the background grid
     vec2 grid_uv = p - c;
     float grid = dot(

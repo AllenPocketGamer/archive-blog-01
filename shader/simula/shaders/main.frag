@@ -41,7 +41,7 @@ uniform float time;
 flat layout(location = 0) in float i_thickness;
 flat layout(location = 1) in uint i_gtype;
 flat layout(location = 2) in mat4 i_mx_model;
-flat layout(location = 6) in mat4 i_mx_proj;
+flat layout(location = 6) in mat4 i_mx_p2l;
 
 out vec4 outColor;
 
@@ -163,28 +163,12 @@ float sdf_heart(vec2 pos, float sl) {
 void main() {
    const float BLUR = 0.00318;
 
-   mat4 mx_n2p = mat4
-   (
-      0.5 * vp_size.x,     0.0            ,     0.0,     0.0,
-      0.0            ,     0.5 * vp_size.y,     0.0,     0.0,
-      0.0            ,     0.0            ,     0.5,     0.0,
-      0.5 * vp_size.x,     0.5 * vp_size.y,     0.5,     1.0
-   );
-   
-   mat4 mx_l2p = mx_n2p * i_mx_proj * mx_view * i_mx_model;
-   mat4 mx_p2l = inverse(mx_l2p);
+   vec2 pl = (i_mx_p2l * gl_FragCoord).xy;
 
-   vec4 pp = gl_FragCoord;
-   vec2 pl = (mx_p2l * pp).xy;
-
-   // 负值表示在局部空间, 正值表示在屏幕空间.
-   // half thickness
-   float ht = i_thickness > 0 ? 0.5 * length(mx_p2l * vec4(i_thickness, 0.0, 0.0, 0.0)) : -0.5 * i_thickness;
-   // pixel thickness
-   float pt = i_thickness > 0 ? i_thickness : length(mx_l2p * vec4(2.0 * ht, 0.0, 0.0, 0.0));
+   float ht = 0.5 * i_thickness;
 
    // NOTE: 弧长恒为像素厚度的DASH_RATIO倍.
-   float LENGTH = 2.0 * DASH_RATIO * ht;
+   float LENGTH = DASH_RATIO * i_thickness;
 
    float f = 0;
    vec2 tage = vec2(0.0);
