@@ -75,7 +75,7 @@
 					<scaleX>256</scaleX>
 					<scaleY>256</scaleY>
 					<instanced>true</instanced>
-					<instancecount>3</instancecount>
+					<instancecount>10</instancecount>
 					<instancebuffer>geometries</instancebuffer>
 					<topology>TriangleList</topology>
 				</item>
@@ -117,7 +117,7 @@
 		</pass>
 	</pipeline>
 	<objects>
-		<object type="buffer" name="geometries" size="72" format="vec4;float;float" pausedpreview="false">
+		<object type="buffer" name="geometries" size="240" format="vec4;float;float" pausedpreview="false">
 			<bind slot="0" name="geometry" />
 		</object>
 	</objects>

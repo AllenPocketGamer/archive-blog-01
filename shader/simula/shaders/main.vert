@@ -9,7 +9,7 @@ layout(location = 2) in float thickness;
 layout(location = 3) in float gtype; 
 
 layout(location = 0) out float o_thickness;
-layout(location = 1) out int o_gtype;
+layout(location = 1) out uint o_gtype;
 layout(location = 2) out mat4 o_mx_model;
 layout(location = 6) out mat4 o_mx_proj;
 
@@ -30,7 +30,7 @@ mat4 to_matrix(vec2 position, float angle, float size) {
 void main() {
    o_mx_model = to_matrix(extras.xy, extras.z, extras.w);
    o_thickness = thickness;
-   o_gtype = int(gtype);
+   o_gtype = uint(gtype);
    
    // correct mx_proj
    o_mx_proj = mx_proj;
