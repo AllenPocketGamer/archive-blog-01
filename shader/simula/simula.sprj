@@ -24,6 +24,7 @@
 				<variable type="float4x4" name="mx_proj" system="Orthographic" />
 				<variable type="float4x4" name="mx_model" system="GeometryTransform" />
 				<variable type="float2" name="vp_size" system="ViewportSize" />
+				<variable type="float2" name="mouse" system="MousePosition" />
 				<variable type="float" name="time" system="Time" />
 			</variables>
 			<macros />
@@ -125,9 +126,9 @@
 	<settings>
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="camera" fp="false">
-			<distance>47</distance>
-			<pitch>-52</pitch>
-			<yaw>167</yaw>
+			<distance>43</distance>
+			<pitch>-49</pitch>
+			<yaw>159</yaw>
 			<roll>360</roll>
 		</entry>
 		<entry type="clearcolor" r="0.706563711" g="0.540152967" b="0.540152967" a="0" />
