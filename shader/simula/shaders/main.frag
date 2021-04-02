@@ -161,6 +161,7 @@ float sdf_heart(vec2 pos, float sl) {
 }
 
 void main() {
+   // NOTE: BLUR应该以屏幕空间坐标为基.
    const float BLUR = 0.00318;
 
    vec2 pl = (i_mx_p2l * gl_FragCoord).xy;
@@ -194,7 +195,11 @@ void main() {
          outColor = mix(in_geometry * LRED, in_dash * LBLACK, in_border);
          break;
       case GT_LINE:
-         outColor = MAGENTA;
+         // 移植时需要改, 现在将就吧
+         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(pl.x / LENGTH - time));
+         in_border = smoothstep(0.0, 0.2, 0.5 - abs(pl.y));
+
+         outColor = in_border * in_dash * LBLACK;
          break;
       case GT_ETRIANGLE:
          f = sdf_etriangle(pl, 1.0);

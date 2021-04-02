@@ -76,11 +76,19 @@ void main() {
 
     if(o_gtype == GT_LINE) {
         o_mx_model = to_matrix(extras.xy, extras.zw, thickness_t);
+
+        // GT_LINE比较特殊, 边厚度恒为1.0(在Geometry Space中).
+        //
+        // o_thickness这里含义改变了, 改成了thickness_t / len
+        o_thickness = thickness_t / length(extras.zw - extras.xy);
     } else {
         o_mx_model = to_matrix(extras.xy, extras.z, extras.w);
+
+        // 为什么选vec4(thickness_t, 0.0, 0.0, 0.0)? 因为我假设Transform2D -> Geometry的缩放变化是各向同性的;
+        // NOTE: 这个假设并不牢靠, 在移植时, 正确的边厚度应该在pixel shader中计算.
+        o_thickness = length(inverse(o_mx_model) * vec4(thickness_t, 0.0, 0.0, 0.0));
     }
     
-    o_thickness = length(inverse(o_mx_model) * vec4(thickness_t, 0.0, 0.0, 0.0));
 
     const mat4 mx_l2n = t_mx_proj * mx_view * o_mx_model;
     const mat4 mx_l2p = mx_n2p * mx_l2n;

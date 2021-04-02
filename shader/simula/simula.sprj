@@ -124,6 +124,7 @@
 	</objects>
 	<cameras />
 	<settings>
+		<entry type="property" name="rs" item="pipe" />
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="camera" fp="false">
 			<distance>45</distance>
