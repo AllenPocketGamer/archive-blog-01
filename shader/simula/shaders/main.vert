@@ -1,6 +1,6 @@
 #version 450
 
-// GeometryType
+// Geometry Type
 const uint GT_CIRCLE        = 0;
 const uint GT_LINE          = 1;
 const uint GT_ETRIANGLE     = 2;
@@ -12,6 +12,15 @@ const uint GT_HEXAGRAM      = 7;
 const uint GT_STARFIVE      = 8;
 const uint GT_HEART         = 9;
 
+// Coordniate Space
+const uint CP_GEOMETRY      = 0;
+const uint CP_LOCAL         = 1;
+const uint CP_WORLD         = 2;
+const uint CP_VIEW          = 3;
+const uint CP_CLIP          = 4;
+const uint CP_NDC           = 5;
+const uint CP_SCREEN        = 6;
+
 uniform mat4 mx_proj;
 uniform mat4 mx_view;
 uniform vec2 vp_size;
@@ -22,10 +31,10 @@ layout(location = 2) in float thickness;
 layout(location = 3) in float gtype; 
 
 // o_thickness表示在几何局部空间
-layout(location = 0) out float o_thickness;
-layout(location = 1) out uint o_gtype;
-layout(location = 2) out mat4 o_mx_model;
-layout(location = 6) out mat4 o_mx_p2l;
+layout(location = 0) out uint o_gtype;
+layout(location = 1) out float o_thickness;
+layout(location = 2) out uint o_thickness_space;
+layout(location = 3) out mat4 o_mx_g2l;
 
 mat4 to_matrix(vec2 position, vec2 complex, vec2 scale) {
     return mat4(
@@ -36,17 +45,6 @@ mat4 to_matrix(vec2 position, vec2 complex, vec2 scale) {
     );
 }
 
-mat4 to_matrix(const vec2 pa, const vec2 pb, const float thickness_t) {
-    const vec2 ab = pb - pa;
-    const float len = length(ab);
-
-    const vec2 position = (pa + pb) / 2.0;
-    const vec2 complex = ab / len;
-    const vec2 scale = vec2(len, thickness_t);
-
-    return to_matrix(position, complex, scale);
-}
-
 mat4 to_matrix(vec2 position, float angle, float size) {
     float rad = radians(angle);
     return to_matrix(position, vec2(cos(rad), sin(rad)), vec2(size));
@@ -54,12 +52,14 @@ mat4 to_matrix(vec2 position, float angle, float size) {
 
 void main() {
     // correct mx_proj
-    mat4 t_mx_proj = mx_proj;
-    t_mx_proj[3][0] = t_mx_proj[3][1] = 0.0;
+    const mat4 mx_proj_crt = mat4(
+        mx_proj[0],
+        mx_proj[1],
+        mx_proj[2],
+        vec4(0.0, 0.0, mx_proj[3][2], mx_proj[3][3])
+    );
 
-    o_gtype = uint(gtype);
-
-    const mat4 mx_n2p = mat4
+    const mat4 mx_n2s = mat4
     (
        0.5 * vp_size.x,     0.0            ,     0.0,     0.0,
        0.0            ,     0.5 * vp_size.y,     0.0,     0.0,
@@ -67,32 +67,37 @@ void main() {
        0.5 * vp_size.x,     0.5 * vp_size.y,     0.5,     1.0
     );
 
-    const mat4 mx_p2w = inverse(mx_n2p * t_mx_proj * mx_view);
-    
-    // 负值表示在Transform2D局部空间, 正值表示在屏幕空间(NOTE: 在该实验shader中Transform2D为单位矩阵).
-    //
-    // thickness_t表示在Transform2D空间的宽度
-    const float thickness_t = thickness < 0 ? -thickness : length(mx_p2w * vec4(thickness, 0.0, 0.0, 0.0));
+    o_gtype = uint(gtype);
+    o_thickness_space = thickness < 0 ? CP_LOCAL : CP_SCREEN;
+    o_thickness = abs(thickness);
+    o_mx_g2l = to_matrix(extras.xy, extras.z, extras.w);
 
+    // 特殊类型GT_LINE
     if(o_gtype == GT_LINE) {
-        o_mx_model = to_matrix(extras.xy, extras.zw, thickness_t);
+        const mat4 mx_l2s = mx_n2s * mx_proj_crt * mx_view;
 
-        // GT_LINE比较特殊, 边厚度恒为1.0(在Geometry Space中).
-        //
-        // o_thickness这里含义改变了, 改成了thickness_t / len
-        o_thickness = thickness_t / length(extras.zw - extras.xy);
-    } else {
-        o_mx_model = to_matrix(extras.xy, extras.z, extras.w);
+        const vec2 ab = extras.zw - extras.xy;
+        const float len = length(ab);
+        
+        const vec2 position = (extras.xy + extras.zw) / 2.0;
+        const vec2 complex = ab / len;
+        const vec2 norm = vec2(-complex.y, complex.x);
 
-        // 为什么选vec4(thickness_t, 0.0, 0.0, 0.0)? 因为我假设Transform2D -> Geometry的缩放变化是各向同性的;
-        // NOTE: 这个假设并不牢靠, 在移植时, 正确的边厚度应该在pixel shader中计算.
-        o_thickness = length(inverse(o_mx_model) * vec4(thickness_t, 0.0, 0.0, 0.0));
+        // 线段的厚度(local space)可以在vertex中直接求得;
+        // 这里需要在局部空间的厚度来构成mx_g2l;
+        // 说实话这个分支挺丑的, 但在不影响性能的情况下就先这样吧.
+        const float th_l = o_thickness_space == CP_LOCAL ? 
+            o_thickness :
+            o_thickness / length(mx_l2s * vec4(norm, 0.0, 0.0));
+
+        const vec2 scale = vec2(len, th_l);
+
+        o_mx_g2l = to_matrix(position, complex, scale);
+
+        o_thickness_space = CP_LOCAL;
+        o_thickness = th_l;
     }
-    
 
-    const mat4 mx_l2n = t_mx_proj * mx_view * o_mx_model;
-    const mat4 mx_l2p = mx_n2p * mx_l2n;
-    o_mx_p2l = inverse(mx_l2p);
-
-    gl_Position = mx_l2n * vec4(pos.xyz, 1);
+   // NOTE: mx_l2w被设定为单位矩阵, 在mx_view与i_mx_g2l之间被省略.
+    gl_Position = mx_proj_crt * mx_view * o_mx_g2l * vec4(pos.xyz, 1);
 }

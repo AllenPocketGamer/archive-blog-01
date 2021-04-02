@@ -1,13 +1,20 @@
 #version 450
 
 #define PI 3.14159265359
+#define SQRT_3 1.73205080757
 #define DELTA 0.00001
 
-const float SQRT_3 = sqrt(3.0);
-// DASH_RATIO = DASH边长 : 厚度
-const float DASH_RATIO = 8.0;
+// Quad centra in geometry space.
+const vec4 QUAD_CENTRA = vec4(0.0, 0.0, 0.0, 1.0);
 
-// GeometryType
+// DASH_PROPORTION = DASH边长 : 厚度
+const float DASH_PROPORTION = 8.0;
+// Dash边中空白的占比.
+const float DASH_EMPTY_RATIO = 0.3;
+// 抗锯齿边缘像素个数(TODO: 未完工)
+const float BLUR = 0.00318;
+
+// Geometry Type
 const uint GT_CIRCLE        = 0;
 const uint GT_LINE          = 1;
 const uint GT_ETRIANGLE     = 2;
@@ -18,6 +25,15 @@ const uint GT_OCTOGON       = 6;
 const uint GT_HEXAGRAM      = 7;
 const uint GT_STARFIVE      = 8;
 const uint GT_HEART         = 9;
+
+// Coordniate Space
+const uint CP_GEOMETRY      = 0;
+const uint CP_LOCAL         = 1;
+const uint CP_WORLD         = 2;
+const uint CP_VIEW          = 3;
+const uint CP_CLIP          = 4;
+const uint CP_NDC           = 5;
+const uint CP_SCREEN        = 6;
 
 const vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
 const vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
@@ -33,15 +49,16 @@ const vec4 LBLUE = vec4(21, 125, 136, 255) / 255.0;
 const vec4 LCYAN = vec4(135, 208, 191, 255) / 255.0;
 const vec4 LBLACK = vec4(0.1, 0.1, 0.1, 1.0);
 
+uniform mat4 mx_proj;
 uniform mat4 mx_view;
 uniform vec2 vp_size;
 uniform vec2 mouse;
 uniform float time;
 
-flat layout(location = 0) in float i_thickness;
-flat layout(location = 1) in uint i_gtype;
-flat layout(location = 2) in mat4 i_mx_model;
-flat layout(location = 6) in mat4 i_mx_p2l;
+flat layout(location = 0) in uint i_gtype;
+flat layout(location = 1) in float i_thickness;
+flat layout(location = 2) in uint i_thickness_space;
+flat layout(location = 3) in mat4 i_mx_g2l;
 
 out vec4 outColor;
 
@@ -161,15 +178,55 @@ float sdf_heart(vec2 pos, float sl) {
 }
 
 void main() {
-   // NOTE: BLUR应该以屏幕空间坐标为基.
-   const float BLUR = 0.00318;
+   // correct mx_proj
+   const mat4 mx_proj_crt = mat4(
+      mx_proj[0],
+      mx_proj[1],
+      mx_proj[2],
+      vec4(0.0, 0.0, mx_proj[3][2], mx_proj[3][3])
+   );
 
-   vec2 pl = (i_mx_p2l * gl_FragCoord).xy;
+   const mat4 mx_n2s = mat4
+   (
+      0.5 * vp_size.x,     0.0            ,     0.0,     0.0,
+      0.0            ,     0.5 * vp_size.y,     0.0,     0.0,
+      0.0            ,     0.0            ,     0.5,     0.0,
+      0.5 * vp_size.x,     0.5 * vp_size.y,     0.5,     1.0
+   );
 
-   float ht = 0.5 * i_thickness;
+   // NOTE: mx_l2w被设定为单位矩阵, 在mx_view与i_mx_g2l之间被省略.
+   const mat4 mx_g2s = mx_n2s * mx_proj_crt * mx_view * i_mx_g2l;
+   const mat4 mx_s2g = inverse(mx_g2s);
 
-   // NOTE: 弧长恒为像素厚度的DASH_RATIO倍.
-   float LENGTH = DASH_RATIO * i_thickness;
+   // frag in geometry space.
+   const vec4 pg = mx_s2g * gl_FragCoord;
+
+   // thickness in geometry space.
+   float th_g = 0.0;
+   if(i_thickness_space == CP_SCREEN) {
+      // quad centra in screen space.
+      const vec4 cs = mx_g2s * QUAD_CENTRA;
+      
+      // vector from quad centra to frag in screen space(scale length to i_thickness).
+      const vec4 v_c2p = vec4(i_thickness * normalize((gl_FragCoord - cs).xyz), 0.0);
+      
+      th_g = length((mx_s2g * v_c2p));
+   } else { // CP_LOCAL
+      // quad centra in local space.
+      const vec4 cl = i_mx_g2l * QUAD_CENTRA;
+      // frag in local space.
+      const vec4 pl = i_mx_g2l * pg;
+
+      // vector from quad centra to frag in local space(scale length to i_thickness).
+      const vec4 v_c2p = vec4(i_thickness * normalize((pl - cl).xyz), 0.0);
+
+      th_g = length(inverse(i_mx_g2l) * v_c2p);
+   }
+   
+   const float ht = 0.5 * th_g;
+
+   // NOTE: 无法兼容GT_LINE.
+   const float LENGTH = DASH_PROPORTION * th_g;
 
    float f = 0;
    vec2 tage = vec2(0.0);
@@ -179,164 +236,166 @@ void main() {
 
    switch(i_gtype) {
       case GT_CIRCLE:
-         f = sdf_circle(pl, 1.0);
+         f = sdf_circle(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // radius in screen space.
-         float rad = atan(pl.y, pl.x);
+         float rad = atan(pg.y, pg.x);
          // [-PI, PI] map to [-1, 1]. 
          float range = rad / PI;
          // dash的份数, 恒为偶数.
          float count = 2.0 * ceil(0.5 * PI / LENGTH);
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, 
             abs(fract((range - 0.5) * count / 4.0 + time) - 0.5) * 2.0);
 
          outColor = mix(in_geometry * LRED, in_dash * LBLACK, in_border);
          break;
-      case GT_LINE:
-         // 移植时需要改, 现在将就吧
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(pl.x / LENGTH - time));
-         in_border = smoothstep(0.0, 0.2, 0.5 - abs(pl.y));
+      case GT_LINE: // GT_LINE的i_thickness必然位于local space;
+         const float len_l = DASH_PROPORTION * i_thickness;
+         const float len_g = len_l / length(i_mx_g2l * vec4(1.0, 0.0, 0.0, 0.0));
+      
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(pg.x / len_g - time));
+         in_border = smoothstep(0.0, 0.2, 0.5 - abs(pg.y));
 
          outColor = in_border * in_dash * LBLACK;
          break;
       case GT_ETRIANGLE:
-         f = sdf_etriangle(pl, 1.0);
+         f = sdf_etriangle(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_etriangle(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_etriangle(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_etriangle(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_etriangle(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * LORANGE, in_dash * LBLACK, in_border);
          // outColor = 0.5 * (LBEIGE * in_dash + LRED * in_border);
          break;
       case GT_SQUARE:
-         f = sdf_square(pl, 1.0);
+         f = sdf_square(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_square(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_square(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_square(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_square(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * LBEIGE, in_dash * LBLACK, in_border);
          break;
       case GT_PENTAGON:
-         f = sdf_pentagon(pl, 1.0);
+         f = sdf_pentagon(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_pentagon(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_pentagon(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_pentagon(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_pentagon(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * LBLUE, in_dash * LBLACK, in_border);
          break;
       case GT_HEXAGON:
-         f = sdf_hexagon(pl, 1.0);
+         f = sdf_hexagon(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_hexagon(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_hexagon(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_hexagon(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_hexagon(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * LCYAN, in_dash * LBLACK, in_border);
          break;
       case GT_OCTOGON:
-         f = sdf_octogon(pl, 1.0);
+         f = sdf_octogon(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_octogon(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_octogon(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_octogon(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_octogon(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * CYAN, in_dash * LBLACK, in_border);
          break;
       case GT_HEXAGRAM:
-         f = sdf_hexagram(pl, 1.0);
+         f = sdf_hexagram(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_hexagram(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_hexagram(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_hexagram(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_hexagram(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * MAGENTA, in_dash * LBLACK, in_border);
          // outColor = 0.5 * (LBEIGE * in_dash + LRED * in_border);
          break;
       case GT_STARFIVE:
-         f = sdf_starfive(pl, 1.0);
+         f = sdf_starfive(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // sdf(x, y) divided by numeriral gradient(numerical GPU gradient is not precise enough).
          tage = normalize(
             vec2(
-               sdf_starfive(pl + vec2(0.0, DELTA), 1.0) - f,
-               f - sdf_starfive(pl + vec2(DELTA, 0.0), 1.0)
+               sdf_starfive(pg.xy + vec2(0.0, DELTA), 1.0) - f,
+               f - sdf_starfive(pg.xy + vec2(DELTA, 0.0), 1.0)
                )
          );
 
          // NOTE: 凹角的dash显示有问题, 需改善
          // 可读性差, 得标明各个有效参数的含义
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, fract(dot(pl, tage) / LENGTH + time));
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, fract(dot(pg.xy, tage) / LENGTH + time));
 
          outColor = mix(in_geometry * VIOLET, in_dash * LBLACK, in_border);
          // outColor = 0.5 * (LBEIGE * in_dash + LRED * in_border);
          break;
       case GT_HEART:
-         f = sdf_heart(pl, 1.0);
+         f = sdf_heart(pg.xy, 1.0);
          in_geometry = smoothstep(-BLUR, BLUR, f - ht);
          in_border = 1.0 - smoothstep(ht - BLUR, ht + BLUR, abs(f - ht));
 
          // radius in screen space.
-         rad = atan(pl.y, pl.x);
+         rad = atan(pg.y, pg.x);
          // [-PI, PI] map to [-1, 1]. 
          range = rad / PI;
          // dash的份数, 恒为偶数.
          count = 2.0 * ceil(0.5 * PI / LENGTH);
-         in_dash = smoothstep(0.3 - BLUR, 0.3 + BLUR, 
+         in_dash = smoothstep(DASH_EMPTY_RATIO - BLUR, DASH_EMPTY_RATIO + BLUR, 
             abs(fract((range - 0.5) * count / 4.0 + time) - 0.5) * 2.0);
 
          outColor = mix(in_geometry * ROSE, in_dash * LBLACK, in_border);
