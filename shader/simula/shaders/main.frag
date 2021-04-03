@@ -11,7 +11,7 @@ const vec4 QUAD_CENTRA = vec4(0.0, 0.0, 0.0, 1.0);
 const float DASH_PROPORTION = 8.0;
 // Dash边中空白的占比.
 const float DASH_EMPTY = 0.3;
-// 抗锯齿边缘像素个数(TODO: 未完工)
+// 抗锯齿边缘像素个数
 const float BLUR = 1;
 
 // Geometry Type
@@ -204,7 +204,8 @@ void main() {
    const vec4 cs = mx_g2s * QUAD_CENTRA;
       
    // vector from quad centra to frag in screen space(scale length to i_thickness).
-   const vec4 c2p_norm_s = vec4(normalize((gl_FragCoord - cs).xyz), 0.0);
+   const vec4 avoid_zero = vec4(0.0000001, 0.0000001, 0.0, 0.0);
+   const vec4 c2p_norm_s = vec4(normalize((gl_FragCoord + avoid_zero - cs).xyz), 0.0);
 
    // thickness in geometry space.
    float th_g = 0.0;
