@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <project version="2">
 	<pipeline>
-		<pass name="background" type="shader" active="true" patchverts="1" collapsed="true">
+		<pass name="background" type="shader" active="false" patchverts="1" collapsed="true">
 			<shader type="vs" path="shaders\bg.vert" entry="main" />
 			<shader type="ps" path="shaders\bg.frag" entry="main" />
 			<inputlayout>
@@ -124,10 +124,9 @@
 	</objects>
 	<cameras />
 	<settings>
-		<entry type="property" name="rs" item="pipe" />
 		<entry type="pinned" name="mx_view" owner="geometry" />
 		<entry type="camera" fp="false">
-			<distance>28</distance>
+			<distance>34</distance>
 			<pitch>-49</pitch>
 			<yaw>159</yaw>
 			<roll>360</roll>

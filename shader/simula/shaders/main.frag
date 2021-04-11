@@ -90,12 +90,7 @@ float sdf_etriangle(vec2 pos, float sl) {
 
 float sdf_square(vec2 pos, float sl) {
    pos = abs(pos);
-   pos = pos.x - pos.y > 0.0 ? pos = pos.yx : pos;
-   pos.y -= 0.5 * sl;
-
-   pos.x -= clamp(pos.x, 0, 0.5 * sl);
-   
-   return length(pos) * sign(-pos.y);
+   return min(0.5 - pos.x, 0.5 - pos.y);
 }
 
 float sdf_pentagon(vec2 pos, float sl) {
@@ -203,7 +198,7 @@ void main() {
    // quad centra in screen space.
    const vec4 cs = mx_g2s * QUAD_CENTRA;
       
-   // vector from quad centra to frag in screen space(scale length to i_thickness).
+   // vector from quad centra to frag in screen space.
    const vec4 avoid_zero = vec4(0.0000001, 0.0000001, 0.0, 0.0);
    const vec4 c2p_norm_s = vec4(normalize((gl_FragCoord + avoid_zero - cs).xyz), 0.0);
 
